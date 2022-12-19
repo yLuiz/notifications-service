@@ -2,29 +2,63 @@ import { Injectable } from "@nestjs/common";
 import { Notification } from "@app/entities/notifications";
 import { NotificationsRepository } from "@app/repositories/notification-repository";
 import { PrismaService } from "../prisma.service";
-import { PrismNotificationMapper } from "../mappers/prisma-notification-mapper";
+import { PrismaNotificationMapper } from "../mappers/prisma-notification-mapper";
 
 @Injectable()
 export class PrismaNotificationRepository implements NotificationsRepository {
 
   constructor(
-    private prismaService: PrismaService
+    private prisma: PrismaService
   ) {}
+  
+  async findById(notificationId: string): Promise<Notification | null> {
+    const notification = await this.prisma.notification.findUnique({
+      where: {
+        id: notificationId
+      }
+    });
 
-  async create(notification: Notification) {
+    if (!notification) return null;
 
-    const raw = PrismNotificationMapper.toPrisma(notification);
+    return PrismaNotificationMapper.toDomain(notification);
+  }
 
-    await this.prismaService.notification.create({
+  async findManyByRecipientId(recipientId: string): Promise<Notification[]> {
+    const notifications = await this.prisma.notification.findMany({
+      where: {
+        recipientId
+      }
+    })
+
+    return notifications.map(notification => PrismaNotificationMapper.toDomain(notification));
+  }
+
+  async countManyByRecipientId(recipientId: string): Promise<number> {
+    const count = await this.prisma.notification.count({
+      where: {
+        recipientId
+      }
+    });
+
+    return count;
+  }
+
+  async create(notification: Notification) { 
+    const raw = PrismaNotificationMapper.toPrisma(notification);
+    
+    await this.prisma.notification.create({
       data: raw
     })
   }
-  
-  async findById(notificationId: string): Promise<Notification | null> {
-    throw new Error("Method not implemented.");
-  }
 
   async save(notification: Notification): Promise<void> {
-    throw new Error("Method not implemented.");
+    const raw = PrismaNotificationMapper.toPrisma(notification);
+
+    await this.prisma.notification.update({
+      where: {
+        id: raw.id
+      },
+      data: raw
+    })
   }
 }
